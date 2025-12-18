@@ -1,0 +1,102 @@
+{
+  "regions": {
+    "ua": {
+      "name": "Ukraine",
+      "currency": "USD",
+      "symbol": "$",
+      "rates": {
+        "junior": 15,
+        "middle": 25,
+        "senior": 45,
+        "typical": 28
+      },
+      "overhead": 1.2
+    },
+    "ua_compliance": {
+      "name": "Ukraine (Compliance)",
+      "currency": "USD",
+      "symbol": "$",
+      "rates": {
+        "junior": 20,
+        "middle": 35,
+        "senior": 55,
+        "typical": 37
+      },
+      "overhead": 1.25
+    },
+    "pl": {
+      "name": "Poland",
+      "currency": "EUR",
+      "symbol": "\u20ac",
+      "rates": {
+        "junior": 25,
+        "middle": 40,
+        "senior": 60,
+        "typical": 42
+      },
+      "overhead": 1.25
+    },
+    "eu": {
+      "name": "EU Standard",
+      "currency": "EUR",
+      "symbol": "\u20ac",
+      "rates": {
+        "junior": 35,
+        "middle": 55,
+        "senior": 85,
+        "typical": 58
+      },
+      "overhead": 1.35
+    },
+    "de": {
+      "name": "Germany",
+      "currency": "EUR",
+      "symbol": "\u20ac",
+      "rates": {
+        "junior": 45,
+        "middle": 70,
+        "senior": 100,
+        "typical": 72
+      },
+      "overhead": 1.4
+    },
+    "uk": {
+      "name": "United Kingdom",
+      "currency": "GBP",
+      "symbol": "\u00a3",
+      "rates": {
+        "junior": 40,
+        "middle": 65,
+        "senior": 95,
+        "typical": 67
+      },
+      "overhead": 1.35
+    },
+    "us": {
+      "name": "United States",
+      "currency": "USD",
+      "symbol": "$",
+      "rates": {
+        "junior": 50,
+        "middle": 85,
+        "senior": 130,
+        "typical": 88
+      },
+      "overhead": 1.4
+    },
+    "in": {
+      "name": "India",
+      "currency": "USD",
+      "symbol": "$",
+      "rates": {
+        "junior": 12,
+        "middle": 22,
+        "senior": 35,
+        "typical": 23
+      },
+      "overhead": 1.15
+    }
+  },
+  "updated_at": "2025-12-18T13:25:35.079140+00:00",
+  "updated_by": "system"
+}

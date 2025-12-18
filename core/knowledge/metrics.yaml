@@ -1,0 +1,220 @@
+# Knowledge Base - Metrics Definitions
+# Human-readable explanations for all metrics
+
+name: metrics_knowledge
+version: "1.0"
+
+metrics:
+  repo_health:
+    display_name: "Repository Health"
+    description: "Overall project organization and maintainability score"
+    unit: "points"
+    max_value: 12
+    business_meaning: |
+      Measures how well-organized and maintainable the codebase is.
+      Higher score = easier to onboard new developers, lower maintenance costs.
+    analogies:
+      - "Like a health checkup for your code"
+      - "Think of it as a cleanliness score for a kitchen"
+    impact:
+      high: "Easy to maintain, quick onboarding, low technical risk"
+      medium: "Some friction in maintenance, moderate onboarding time"
+      low: "Difficult to maintain, high risk of bugs, slow development"
+
+  tech_debt:
+    display_name: "Technical Debt"
+    description: "Accumulated shortcuts and code quality issues"
+    unit: "points"
+    max_value: 15
+    inverted: true  # Higher = less debt = better
+    business_meaning: |
+      Technical debt is like financial debt - shortcuts taken now that cost more later.
+      High debt = slower feature development, more bugs, higher costs.
+    analogies:
+      - "Like credit card debt for code"
+      - "Deferred maintenance on a building"
+    impact:
+      high: "Fast development, predictable timelines"
+      medium: "Some slowdowns, occasional surprises"
+      low: "Slow development, frequent bugs, unpredictable timelines"
+
+  security_score:
+    display_name: "Security Score"
+    description: "Security posture and vulnerability status"
+    unit: "points"
+    max_value: 3
+    business_meaning: |
+      Indicates how secure the codebase is against common attacks.
+      Critical for applications handling user data or payments.
+    analogies:
+      - "Like a security audit for a building"
+      - "Insurance risk assessment"
+    impact:
+      high: "Safe for production, handles sensitive data"
+      medium: "Needs review before handling sensitive data"
+      low: "Security risks present, not safe for production"
+
+  complexity_score:
+    display_name: "Code Complexity"
+    description: "Cyclomatic complexity of the codebase"
+    unit: "average"
+    max_value: 50
+    inverted: true
+    business_meaning: |
+      Complex code is harder to understand, test, and modify.
+      Lower complexity = fewer bugs, easier changes.
+    thresholds:
+      excellent: 10
+      good: 15
+      acceptable: 25
+      concerning: 35
+      critical: 50
+
+  duplication_percent:
+    display_name: "Code Duplication"
+    description: "Percentage of duplicated code"
+    unit: "%"
+    max_value: 100
+    inverted: true
+    business_meaning: |
+      Duplicated code means bugs need fixing in multiple places.
+      Lower duplication = more maintainable code.
+    thresholds:
+      excellent: 3
+      good: 5
+      acceptable: 10
+      concerning: 20
+      critical: 30
+
+  test_coverage:
+    display_name: "Test Coverage"
+    description: "Percentage of code covered by tests"
+    unit: "%"
+    max_value: 100
+    business_meaning: |
+      Tests catch bugs before users do.
+      Higher coverage = more confidence in changes.
+    thresholds:
+      excellent: 80
+      good: 60
+      acceptable: 40
+      concerning: 20
+      critical: 0
+
+product_levels:
+  "R&D Spike":
+    emoji: "🧪"
+    description: "Experimental code, proof of concept"
+    suitable_for:
+      - "Internal experiments"
+      - "Feasibility testing"
+      - "Learning new technology"
+    not_suitable_for:
+      - "Production use"
+      - "Customer-facing features"
+      - "Critical business processes"
+    next_level: "Prototype"
+    upgrade_path:
+      - "Add README with setup instructions"
+      - "Add basic error handling"
+      - "Document main functions"
+
+  "Prototype":
+    emoji: "🔧"
+    description: "Working prototype, demonstrates functionality"
+    suitable_for:
+      - "Demos and presentations"
+      - "User feedback collection"
+      - "Limited internal testing"
+    not_suitable_for:
+      - "Production deployment"
+      - "Handling real user data"
+    next_level: "Internal Tool"
+    upgrade_path:
+      - "Add unit tests (40%+ coverage)"
+      - "Add input validation"
+      - "Setup CI pipeline"
+
+  "Internal Tool":
+    emoji: "🛠️"
+    description: "Ready for internal team use"
+    suitable_for:
+      - "Internal team workflows"
+      - "Non-critical processes"
+      - "Development tools"
+    not_suitable_for:
+      - "External customers"
+      - "Mission-critical processes"
+    next_level: "Platform Module Candidate"
+    upgrade_path:
+      - "Increase test coverage to 60%+"
+      - "Add API documentation"
+      - "Add Docker support"
+      - "Setup CD pipeline"
+
+  "Platform Module Candidate":
+    emoji: "📦"
+    description: "Can be integrated into platform"
+    suitable_for:
+      - "Platform integration"
+      - "Internal services"
+      - "API consumers"
+    not_suitable_for:
+      - "Direct customer access without gateway"
+    next_level: "Near-Product"
+    upgrade_path:
+      - "Security audit and fixes"
+      - "Performance optimization"
+      - "80%+ test coverage"
+      - "Full documentation"
+
+  "Near-Product":
+    emoji: "🚀"
+    description: "Production-ready quality"
+    suitable_for:
+      - "Production deployment"
+      - "Customer-facing features"
+      - "Critical business processes"
+    not_suitable_for: []
+    next_level: null
+    maintenance:
+      - "Regular security updates"
+      - "Dependency updates"
+      - "Performance monitoring"
+
+recommendations:
+  categories:
+    - name: "documentation"
+      priority: 1
+      actions:
+        - "Add comprehensive README"
+        - "Document API endpoints"
+        - "Add inline code comments"
+
+    - name: "testing"
+      priority: 2
+      actions:
+        - "Add unit tests"
+        - "Add integration tests"
+        - "Setup test coverage reporting"
+
+    - name: "ci_cd"
+      priority: 3
+      actions:
+        - "Setup GitHub Actions / GitLab CI"
+        - "Add automated testing"
+        - "Add automated deployment"
+
+    - name: "security"
+      priority: 1
+      actions:
+        - "Fix critical vulnerabilities"
+        - "Remove hardcoded secrets"
+        - "Add dependency scanning"
+
+    - name: "code_quality"
+      priority: 4
+      actions:
+        - "Reduce code duplication"
+        - "Simplify complex functions"
+        - "Add linting rules"

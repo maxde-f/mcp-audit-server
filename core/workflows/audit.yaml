@@ -1,0 +1,282 @@
+# Audit Workflow v3.1
+# Smart dependencies: runs only what's needed for selected task
+
+name: repository_audit
+version: "3.1"
+
+inputs:
+  # Source
+  source_type:
+    type: string
+    enum: [git, directory]
+    default: git
+  source_path:
+    type: string
+    required: true
+
+  # Single task selection
+  task:
+    type: string
+    enum:
+      - quick_scan        # Быстрый скан - только базовая инфо
+      - detect_type       # Определить тип проекта
+      - check_quality     # Проверка качества
+      - check_compliance  # Проверка соответствия контракту/политике
+      - estimate_cost     # Оценка стоимости
+      - full_audit        # Полный аудит
+    default: quick_scan
+
+  # Documents (upload before audit)
+  contract_file:
+    type: file
+    required: false
+    description: "Contract PDF/DOCX to check compliance"
+  policy_file:
+    type: file
+    required: false
+    description: "Policy document"
+
+  # Or use saved document ID
+  contract_id:
+    type: string
+    required: false
+  policy_id:
+    type: string
+    required: false
+
+  # Settings
+  branch:
+    type: string
+    default: main
+  region:
+    type: string
+    default: EU_UA
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TASK DEPENDENCIES (что запускается для каждой задачи)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  quick_scan       → [load, scan]
+#  detect_type      → [load, scan, type]
+#  check_quality    → [load, scan, readiness, quality]
+#  check_compliance → [load, scan, docs, readiness, quality, compliance]
+#  estimate_cost    → [load, scan, type, readiness, quality, cost]
+#  full_audit       → [load, scan, docs, type, readiness, quality, compliance, cost, audit, report]
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+stages:
+  # ───────────────────────────────────────────────────────────────────────
+  # ALWAYS RUNS
+  # ───────────────────────────────────────────────────────────────────────
+
+  - id: load_source
+    name: "Load Source"
+    executor: source-loader
+    action: load
+    always: true
+    inputs:
+      source_type: "{{ inputs.source_type }}"
+      source_path: "{{ inputs.source_path }}"
+      branch: "{{ inputs.branch }}"
+    outputs:
+      - local_path
+      - source_info
+      - is_git_repo
+
+  - id: quick_scan
+    name: "Quick Scan"
+    executor: scanner
+    action: quick_scan
+    always: true
+    inputs:
+      path: "{{ stages.load_source.local_path }}"
+    outputs:
+      - file_count
+      - loc
+      - languages
+      - size_category
+      - estimated_scan_time
+
+  # ───────────────────────────────────────────────────────────────────────
+  # DOCUMENT LOADING (for compliance tasks)
+  # ───────────────────────────────────────────────────────────────────────
+
+  - id: load_documents
+    name: "Load Contract & Policy"
+    executor: document-loader
+    action: load
+    run_if: "{{ inputs.task in ['check_compliance', 'full_audit'] }}"
+    inputs:
+      contract_file: "{{ inputs.contract_file }}"
+      policy_file: "{{ inputs.policy_file }}"
+      contract_id: "{{ inputs.contract_id }}"
+      policy_id: "{{ inputs.policy_id }}"
+    outputs:
+      - contract_parsed      # Parsed contract requirements
+      - policy_parsed        # Parsed policy requirements
+      - contract_summary
+      - policy_summary
+
+  # ───────────────────────────────────────────────────────────────────────
+  # TYPE DETECTION
+  # ───────────────────────────────────────────────────────────────────────
+
+  - id: detect_type
+    name: "Detect Project Type"
+    executor: type-detector
+    action: detect
+    run_if: "{{ inputs.task in ['detect_type', 'estimate_cost', 'full_audit'] }}"
+    inputs:
+      path: "{{ stages.load_source.local_path }}"
+      scan: "{{ stages.quick_scan }}"
+    outputs:
+      - project_type
+      - framework
+      - architecture
+      - maturity_level
+
+  # ───────────────────────────────────────────────────────────────────────
+  # READINESS CHECK (before quality/compliance/audit)
+  # ───────────────────────────────────────────────────────────────────────
+
+  - id: readiness_check
+    name: "Audit Readiness"
+    executor: readiness-checker
+    action: check
+    run_if: "{{ inputs.task in ['check_quality', 'check_compliance', 'estimate_cost', 'full_audit'] }}"
+    inputs:
+      path: "{{ stages.load_source.local_path }}"
+      scan: "{{ stages.quick_scan }}"
+      is_git: "{{ stages.load_source.is_git_repo }}"
+    outputs:
+      - is_ready
+      - readiness_score
+      - blockers
+      - warnings
+      - recommendations
+      - can_proceed
+
+  # ───────────────────────────────────────────────────────────────────────
+  # QUALITY ANALYSIS
+  # ───────────────────────────────────────────────────────────────────────
+
+  - id: quality_analysis
+    name: "Quality Analysis"
+    executor: quality-analyzer
+    action: analyze
+    run_if: "{{ inputs.task in ['check_quality', 'check_compliance', 'estimate_cost', 'full_audit'] }}"
+    requires: readiness_check.can_proceed
+    inputs:
+      path: "{{ stages.load_source.local_path }}"
+      languages: "{{ stages.quick_scan.languages }}"
+    outputs:
+      - repo_health
+      - tech_debt
+      - security_score
+      - code_quality
+      - documentation_quality
+
+  # ───────────────────────────────────────────────────────────────────────
+  # COMPLIANCE CHECK
+  # ───────────────────────────────────────────────────────────────────────
+
+  - id: compliance_check
+    name: "Compliance Check"
+    executor: compliance-checker
+    action: check
+    run_if: "{{ inputs.task in ['check_compliance', 'full_audit'] }}"
+    inputs:
+      quality: "{{ stages.quality_analysis }}"
+      contract: "{{ stages.load_documents.contract_parsed }}"
+      policy: "{{ stages.load_documents.policy_parsed }}"
+    outputs:
+      - contract_compliant
+      - policy_compliant
+      - gaps
+      - required_fixes
+      - compliance_percent
+
+  # ───────────────────────────────────────────────────────────────────────
+  # COST ESTIMATION
+  # ───────────────────────────────────────────────────────────────────────
+
+  - id: cost_estimation
+    name: "Cost Estimation"
+    executor: cost-estimator
+    action: full_estimate
+    run_if: "{{ inputs.task in ['estimate_cost', 'full_audit'] }}"
+    inputs:
+      scan: "{{ stages.quick_scan }}"
+      quality: "{{ stages.quality_analysis }}"
+      type: "{{ stages.detect_type }}"
+      region: "{{ inputs.region }}"
+    outputs:
+      - dev_hours_min
+      - dev_hours_max
+      - dev_cost_usd
+      - dev_cost_local
+      - ip_value_usd
+      - maintenance_cost_monthly
+      - team_size
+      - timeline_weeks
+
+  # ───────────────────────────────────────────────────────────────────────
+  # FULL AUDIT
+  # ───────────────────────────────────────────────────────────────────────
+
+  - id: full_audit
+    name: "Full Audit"
+    executor: full-auditor
+    action: audit
+    run_if: "{{ inputs.task == 'full_audit' }}"
+    requires: readiness_check.can_proceed
+    inputs:
+      path: "{{ stages.load_source.local_path }}"
+      type: "{{ stages.detect_type }}"
+      quality: "{{ stages.quality_analysis }}"
+    outputs:
+      - security_findings
+      - architecture_review
+      - code_review
+      - recommendations
+      - risk_assessment
+
+  # ───────────────────────────────────────────────────────────────────────
+  # REPORT (always at the end)
+  # ───────────────────────────────────────────────────────────────────────
+
+  - id: report
+    name: "Generate Report"
+    executor: report-generator
+    action: generate
+    always: true
+    inputs:
+      task: "{{ inputs.task }}"
+      stages: "{{ stages }}"
+    outputs:
+      - summary
+      - recommendations
+      - warnings
+      - next_steps
+
+# Output based on task
+outputs:
+  task_completed: "{{ inputs.task }}"
+
+  # Quick scan results (always)
+  files: "{{ stages.quick_scan.file_count }}"
+  loc: "{{ stages.quick_scan.loc }}"
+  languages: "{{ stages.quick_scan.languages }}"
+
+  # Conditional outputs
+  project_type: "{{ stages.detect_type.project_type }}"
+  readiness: "{{ stages.readiness_check.is_ready }}"
+  repo_health: "{{ stages.quality_analysis.repo_health }}"
+  compliant: "{{ stages.compliance_check.contract_compliant }}"
+  dev_cost: "{{ stages.cost_estimation.dev_cost_usd }}"
+  ip_value: "{{ stages.cost_estimation.ip_value_usd }}"
+
+  # Report
+  summary: "{{ stages.report.summary }}"
+  warnings: "{{ stages.report.warnings }}"

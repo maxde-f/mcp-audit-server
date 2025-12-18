@@ -1,0 +1,195 @@
+# Scoring Rules Definition
+# Defines how to calculate scores from collected metrics
+
+name: scoring_rules
+version: "1.0"
+
+# Repository Health Score (0-12 points)
+repo_health:
+  max_score: 12
+  metrics:
+    - name: has_readme
+      points: 2
+      condition: "{{ value == true }}"
+
+    - name: has_license
+      points: 1
+      condition: "{{ value == true }}"
+
+    - name: has_tests
+      points: 2
+      condition: "{{ value == true }}"
+
+    - name: has_ci
+      points: 2
+      condition: "{{ value == true }}"
+
+    - name: has_docker
+      points: 1
+      condition: "{{ value == true }}"
+
+    - name: commit_frequency
+      points: 2
+      conditions:
+        - value: ">= 1/week"
+          points: 2
+        - value: ">= 1/month"
+          points: 1
+        - value: "< 1/month"
+          points: 0
+
+    - name: contributors
+      points: 2
+      conditions:
+        - value: ">= 3"
+          points: 2
+        - value: ">= 2"
+          points: 1
+        - value: "1"
+          points: 0
+
+# Technical Debt Score (0-15 points, higher = less debt)
+tech_debt:
+  max_score: 15
+  metrics:
+    - name: complexity_score
+      points: 3
+      conditions:
+        - value: "<= 10"
+          points: 3
+        - value: "<= 20"
+          points: 2
+        - value: "<= 30"
+          points: 1
+        - value: "> 30"
+          points: 0
+
+    - name: duplication_percent
+      points: 3
+      conditions:
+        - value: "<= 3"
+          points: 3
+        - value: "<= 5"
+          points: 2
+        - value: "<= 10"
+          points: 1
+        - value: "> 10"
+          points: 0
+
+    - name: lint_issues_per_kloc
+      points: 3
+      conditions:
+        - value: "<= 5"
+          points: 3
+        - value: "<= 10"
+          points: 2
+        - value: "<= 20"
+          points: 1
+        - value: "> 20"
+          points: 0
+
+    - name: outdated_dependencies_percent
+      points: 3
+      conditions:
+        - value: "<= 10"
+          points: 3
+        - value: "<= 25"
+          points: 2
+        - value: "<= 50"
+          points: 1
+        - value: "> 50"
+          points: 0
+
+    - name: test_coverage
+      points: 3
+      conditions:
+        - value: ">= 80"
+          points: 3
+        - value: ">= 60"
+          points: 2
+        - value: ">= 40"
+          points: 1
+        - value: "< 40"
+          points: 0
+
+# Security Score (0-3 points)
+security:
+  max_score: 3
+  metrics:
+    - name: critical_vulnerabilities
+      points: -3
+      condition: "{{ value > 0 }}"
+
+    - name: high_vulnerabilities
+      points: -2
+      condition: "{{ value > 0 }}"
+
+    - name: secrets_found
+      points: -3
+      condition: "{{ value > 0 }}"
+
+    - name: security_headers
+      points: 1
+      condition: "{{ value == true }}"
+
+    - name: dependency_audit_clean
+      points: 1
+      condition: "{{ value == true }}"
+
+    - name: has_security_policy
+      points: 1
+      condition: "{{ value == true }}"
+
+# Product Level Classification
+product_level:
+  levels:
+    - name: "R&D Spike"
+      description: "Experimental code, proof of concept"
+      requirements:
+        repo_health: { min: 0, max: 3 }
+        tech_debt: { min: 0, max: 5 }
+
+    - name: "Prototype"
+      description: "Working prototype, needs polish"
+      requirements:
+        repo_health: { min: 4, max: 6 }
+        tech_debt: { min: 4, max: 8 }
+
+    - name: "Internal Tool"
+      description: "Ready for internal team use"
+      requirements:
+        repo_health: { min: 6, max: 8 }
+        tech_debt: { min: 7, max: 10 }
+        has_tests: true
+
+    - name: "Platform Module Candidate"
+      description: "Can be integrated into platform"
+      requirements:
+        repo_health: { min: 8, max: 10 }
+        tech_debt: { min: 10, max: 13 }
+        has_tests: true
+        has_ci: true
+        has_docker: true
+
+    - name: "Near-Product"
+      description: "Production-ready quality"
+      requirements:
+        repo_health: { min: 10, max: 12 }
+        tech_debt: { min: 12, max: 15 }
+        security: { min: 2 }
+        has_tests: true
+        has_ci: true
+        has_docker: true
+
+# Overall Readiness Calculation
+overall_readiness:
+  formula: |
+    (repo_health / 12 * 40) +
+    (tech_debt / 15 * 40) +
+    (security / 3 * 20)
+  thresholds:
+    excellent: 85
+    good: 70
+    acceptable: 50
+    needs_work: 30
+    critical: 0

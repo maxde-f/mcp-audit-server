@@ -1,0 +1,87 @@
+{
+  "methodologies": {
+    "cocomo": {
+      "id": "cocomo",
+      "name": "COCOMO II (Modern)",
+      "formula": "Effort = 0.5 \u00d7 (KLOC)^0.85 \u00d7 EAF",
+      "source": "Boehm et al. (2000), Modern calibration",
+      "confidence": "High",
+      "description": "Industry-standard parametric model for software cost estimation",
+      "enabled": true,
+      "custom_params": {}
+    },
+    "gartner": {
+      "id": "gartner",
+      "name": "Gartner Standard",
+      "formula": "Days = words \u00f7 650 \u00d7 complexity",
+      "source": "Gartner Research 2023",
+      "confidence": "High",
+      "description": "Enterprise documentation standard (500-800 words/day)",
+      "enabled": true,
+      "custom_params": {}
+    },
+    "ieee": {
+      "id": "ieee",
+      "name": "IEEE 1063",
+      "formula": "Days = pages \u00f7 1.5 \u00d7 complexity",
+      "source": "IEEE Standard 1063",
+      "confidence": "High",
+      "description": "Technical documentation standard (1-2 pages/day)",
+      "enabled": true,
+      "custom_params": {}
+    },
+    "microsoft": {
+      "id": "microsoft",
+      "name": "Microsoft Standard",
+      "formula": "Days = words \u00f7 650 \u00d7 complexity",
+      "source": "Microsoft Documentation Standards",
+      "confidence": "Medium",
+      "description": "Tech industry standard (650 words/day)",
+      "enabled": true,
+      "custom_params": {}
+    },
+    "google": {
+      "id": "google",
+      "name": "Google Guidelines",
+      "formula": "Hours = pages \u00d7 4 \u00d7 complexity",
+      "source": "Google Technical Writing Guidelines",
+      "confidence": "Medium",
+      "description": "UX-driven approach (4 hours per page)",
+      "enabled": true,
+      "custom_params": {}
+    },
+    "pmi": {
+      "id": "pmi",
+      "name": "PMI Standard",
+      "formula": "Days = pages \u00d7 0.25 \u00d7 complexity",
+      "source": "PMI Project Management Standards",
+      "confidence": "Medium",
+      "description": "Project management approach (25% of project effort)",
+      "enabled": true,
+      "custom_params": {}
+    },
+    "sei_slim": {
+      "id": "sei_slim",
+      "name": "SEI SLIM",
+      "formula": "Days = 180 \u00d7 0.4 \u00d7 complexity",
+      "source": "SEI SLIM Model",
+      "confidence": "Medium",
+      "description": "For regulated industries (0.30-0.50 factor), 10K+ LOC only",
+      "min_loc": 10000,
+      "enabled": true,
+      "custom_params": {}
+    },
+    "function_points": {
+      "id": "function_points",
+      "name": "Function Points",
+      "formula": "Days = (LOC \u00f7 50) \u00d7 0.25 \u00d7 0.5 \u00d7 complexity",
+      "source": "ISO/IEC 20926",
+      "confidence": "Medium",
+      "description": "Based on functional requirements estimation",
+      "enabled": true,
+      "custom_params": {}
+    }
+  },
+  "updated_at": "2025-12-18T13:25:35.079969+00:00",
+  "updated_by": "system"
+}

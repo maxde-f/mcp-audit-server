@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-blue-400">Audit Platform</h1>
+            <p class="text-gray-400">Repository Analysis & Quality Assessment</p>
+        </header>
+
+        <!-- Main Form -->
+        <div id="form-section" class="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Start New Audit</h2>
+            <form id="audit-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Repository URL</label>
+                    <input type="url" id="repo-url" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="https://github.com/user/repo">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Branch</label>
+                        <input type="text" id="branch" value="main"
+                            class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Profile</label>
+                        <select id="profile"
+                            class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="default">Default (Full)</option>
+                            <option value="minimal">Minimal (Quick)</option>
+                            <option value="strict">Strict (Thorough)</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit"
+                    class="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors">
+                    Start Audit
+                </button>
+            </form>
+        </div>
+
+        <!-- Progress Section (hidden by default) -->
+        <div id="progress-section" class="hidden bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Audit Progress</h2>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span id="current-stage">Initializing...</span>
+                        <span id="progress-percent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-3">
+                        <div id="progress-bar" class="progress-bar bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="stage-list" class="space-y-2 text-sm">
+                    <!-- Stages will be added here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section (hidden by default) -->
+        <div id="results-section" class="hidden">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-800 rounded-lg p-4 text-center">
+                    <div id="emoji-status" class="text-4xl mb-2">-</div>
+                    <div id="product-level" class="text-sm text-gray-400">Product Level</div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 text-center">
+                    <div id="health-score" class="text-2xl font-bold text-green-400">-</div>
+                    <div class="text-sm text-gray-400">Health</div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 text-center">
+                    <div id="debt-score" class="text-2xl font-bold text-yellow-400">-</div>
+                    <div class="text-sm text-gray-400">Tech Debt</div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 text-center">
+                    <div id="security-score" class="text-2xl font-bold text-red-400">-</div>
+                    <div class="text-sm text-gray-400">Security</div>
+                </div>
+            </div>
+
+            <!-- Overall Readiness -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Overall Readiness</h3>
+                <div class="relative pt-1">
+                    <div class="flex mb-2 items-center justify-between">
+                        <span id="readiness-status" class="text-sm font-semibold text-gray-300">-</span>
+                        <span id="readiness-percent" class="text-sm font-semibold text-blue-400">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-4">
+                        <div id="readiness-bar" class="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-4 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Report -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Detailed Report</h3>
+                <div id="report-content" class="prose prose-invert max-w-none">
+                    <!-- Report will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-4">
+                <button onclick="newAudit()" class="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    New Audit
+                </button>
+                <button onclick="downloadReport()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg">
+                    Download Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Error Section -->
+        <div id="error-section" class="hidden bg-red-900/50 border border-red-500 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-red-400 mb-2">Error</h3>
+            <p id="error-message" class="text-gray-300"></p>
+            <button onclick="newAudit()" class="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg">
+                Try Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080';
+        let currentAnalysisId = null;
+        let ws = null;
+
+        // Form submission
+        document.getElementById('audit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const repoUrl = document.getElementById('repo-url').value;
+            const branch = document.getElementById('branch').value;
+            const profile = document.getElementById('profile').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/audit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ repo_url: repoUrl, branch, profile })
+                });
+
+                if (!response.ok) throw new Error('Failed to start audit');
+
+                const data = await response.json();
+                currentAnalysisId = data.analysis_id;
+
+                showProgress();
+                connectWebSocket(data.analysis_id);
+            } catch (error) {
+                showError(error.message);
+            }
+        });
+
+        function connectWebSocket(analysisId) {
+            ws = new WebSocket(`ws://localhost:8080/api/ws/audit/${analysisId}`);
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateProgress(data);
+
+                if (data.status === 'completed') {
+                    ws.close();
+                    fetchResults(analysisId);
+                } else if (data.status === 'failed') {
+                    ws.close();
+                    showError(data.error || 'Audit failed');
+                }
+            };
+
+            ws.onerror = () => {
+                // Fallback to polling
+                pollProgress(analysisId);
+            };
+        }
+
+        async function pollProgress(analysisId) {
+            const poll = async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/audit/${analysisId}`);
+                    const data = await response.json();
+                    updateProgress(data);
+
+                    if (data.status === 'completed') {
+                        fetchResults(analysisId);
+                    } else if (data.status === 'failed') {
+                        showError(data.error || 'Audit failed');
+                    } else {
+                        setTimeout(poll, 1000);
+                    }
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            poll();
+        }
+
+        function updateProgress(data) {
+            document.getElementById('current-stage').textContent = data.stage_name || data.current_stage || 'Processing...';
+            document.getElementById('progress-percent').textContent = `${Math.round(data.progress || 0)}%`;
+            document.getElementById('progress-bar').style.width = `${data.progress || 0}%`;
+        }
+
+        async function fetchResults(analysisId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/audit/${analysisId}/report`);
+                const data = await response.json();
+                showResults(data);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function showResults(data) {
+            hideAll();
+            document.getElementById('results-section').classList.remove('hidden');
+
+            const summary = data.summary;
+
+            // Update scores
+            document.getElementById('health-score').textContent = `${summary.repo_health}/${summary.repo_health_max}`;
+            document.getElementById('debt-score').textContent = `${summary.tech_debt}/${summary.tech_debt_max}`;
+            document.getElementById('security-score').textContent = `${summary.security_score}/${summary.security_max}`;
+            document.getElementById('product-level').textContent = summary.product_level;
+
+            // Update readiness
+            const readiness = summary.overall_readiness;
+            document.getElementById('readiness-percent').textContent = `${readiness}%`;
+            document.getElementById('readiness-bar').style.width = `${readiness}%`;
+
+            // Set emoji and status
+            let emoji, status;
+            if (readiness >= 80) {
+                emoji = '🚀'; status = 'Excellent';
+            } else if (readiness >= 60) {
+                emoji = '✅'; status = 'Good';
+            } else if (readiness >= 40) {
+                emoji = '⚠️'; status = 'Needs Improvement';
+            } else {
+                emoji = '🔴'; status = 'Critical';
+            }
+            document.getElementById('emoji-status').textContent = emoji;
+            document.getElementById('readiness-status').textContent = status;
+
+            // Store for download
+            window.auditReport = data;
+        }
+
+        function showProgress() {
+            hideAll();
+            document.getElementById('progress-section').classList.remove('hidden');
+        }
+
+        function showError(message) {
+            hideAll();
+            document.getElementById('error-section').classList.remove('hidden');
+            document.getElementById('error-message').textContent = message;
+        }
+
+        function hideAll() {
+            document.getElementById('form-section').classList.add('hidden');
+            document.getElementById('progress-section').classList.add('hidden');
+            document.getElementById('results-section').classList.add('hidden');
+            document.getElementById('error-section').classList.add('hidden');
+        }
+
+        function newAudit() {
+            if (ws) ws.close();
+            currentAnalysisId = null;
+            hideAll();
+            document.getElementById('form-section').classList.remove('hidden');
+        }
+
+        function downloadReport() {
+            if (!window.auditReport) return;
+            const blob = new Blob([JSON.stringify(window.auditReport, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit-report-${currentAnalysisId}.json`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
