@@ -1633,7 +1633,11 @@ async def mcp_streamable_http(request):
 # =============================================================================
 
 async def homepage(request):
-    """Serve homepage with full UI."""
+    """Serve homepage with full UI. Handle POST for MCP streamable HTTP."""
+    # Handle POST requests as MCP streamable HTTP
+    if request.method == "POST":
+        return await mcp_streamable_http(request)
+
     all_tools = audit_server.get_tools() + MEMORY_TOOLS
     tool_names = [t["name"] for t in all_tools]
 
@@ -2246,7 +2250,7 @@ def create_app():
     """Create the Starlette application."""
     routes = [
         # Homepage
-        Route('/', homepage),
+        Route('/', homepage, methods=['GET', 'POST']),
 
         # Health & Info
         Route('/health', health_check),
