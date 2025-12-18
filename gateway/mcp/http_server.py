@@ -1303,7 +1303,7 @@ async def oauth_metadata(request):
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "code_challenge_methods_supported": ["S256", "plain"],
         "token_endpoint_auth_methods_supported": ["none", "client_secret_post"],
-        "scopes_supported": ["mcp", "audit", "memory", "read", "write"],
+        "scopes_supported": ["claudeai", "mcp", "audit", "memory", "read", "write"],
         "service_documentation": f"{SERVER_URL}/",
     })
 
@@ -1317,7 +1317,7 @@ async def mcp_discovery(request):
         "description": MCP_SERVER_INFO["description"],
         "transport": {
             "type": "sse",
-            "url": f"{SERVER_URL}/mcp/sse"
+            "url": f"{SERVER_URL}/sse"
         },
         "oauth": {
             "authorization_url": f"{SERVER_URL}/authorize",
@@ -1336,7 +1336,7 @@ async def mcp_discovery(request):
 
 
 async def oauth_authorize(request):
-    """OAuth 2.0 Authorization Endpoint with consent page."""
+    """OAuth 2.0 Authorization Endpoint - auto-approve for Claude Web."""
     params = request.query_params
 
     client_id = params.get("client_id", "")
@@ -1346,9 +1346,8 @@ async def oauth_authorize(request):
     scope = params.get("scope", "mcp")
     code_challenge = params.get("code_challenge", "")
     code_challenge_method = params.get("code_challenge_method", "S256")
-    approved = params.get("approved", "")
 
-    logger.info(f"OAuth authorize: client_id={client_id}, approved={approved}")
+    logger.info(f"OAuth authorize: client_id={client_id}, redirect_uri={redirect_uri}")
 
     if response_type != "code":
         return JSONResponse({"error": "unsupported_response_type"}, status_code=400)
@@ -1356,158 +1355,7 @@ async def oauth_authorize(request):
     if not redirect_uri:
         return JSONResponse({"error": "invalid_request", "error_description": "redirect_uri required"}, status_code=400)
 
-    # If not approved yet, show consent page
-    if approved != "true":
-        # Build approval URL with all params
-        approval_params = urllib.parse.urlencode({
-            "client_id": client_id,
-            "redirect_uri": redirect_uri,
-            "response_type": response_type,
-            "state": state,
-            "scope": scope,
-            "code_challenge": code_challenge,
-            "code_challenge_method": code_challenge_method,
-            "approved": "true"
-        })
-        approval_url = f"{SERVER_URL}/authorize?{approval_params}"
-
-        return HTMLResponse(f'''
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Authorize MCP Audit Server</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }}
-        .card {{
-            background: white;
-            border-radius: 16px;
-            padding: 40px;
-            max-width: 420px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            text-align: center;
-        }}
-        .logo {{
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            border-radius: 20px;
-            margin: 0 auto 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 36px;
-        }}
-        h1 {{
-            font-size: 24px;
-            color: #1f2937;
-            margin-bottom: 8px;
-        }}
-        .subtitle {{
-            color: #6b7280;
-            margin-bottom: 24px;
-        }}
-        .client {{
-            background: #f3f4f6;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 24px;
-        }}
-        .client-name {{
-            font-weight: 600;
-            color: #1f2937;
-            font-size: 18px;
-        }}
-        .scopes {{
-            margin: 20px 0;
-            text-align: left;
-        }}
-        .scope {{
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: #f0fdf4;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            color: #166534;
-        }}
-        .scope::before {{
-            content: "✓";
-            margin-right: 12px;
-            font-weight: bold;
-        }}
-        .btn {{
-            display: block;
-            width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-        }}
-        .btn-primary {{
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            color: white;
-            margin-bottom: 12px;
-        }}
-        .btn-primary:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(59,130,246,0.4);
-        }}
-        .btn-secondary {{
-            background: #f3f4f6;
-            color: #4b5563;
-        }}
-        .footer {{
-            margin-top: 24px;
-            font-size: 12px;
-            color: #9ca3af;
-        }}
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div class="logo">🔐</div>
-        <h1>Authorize Connection</h1>
-        <p class="subtitle">MCP Audit Server wants to connect</p>
-
-        <div class="client">
-            <div class="client-name">{client_id or "Claude"}</div>
-            <div style="color: #6b7280; font-size: 14px;">requests access to your workspace</div>
-        </div>
-
-        <div class="scopes">
-            <div class="scope">Repository audit & analysis</div>
-            <div class="scope">Cost estimation tools</div>
-            <div class="scope">Memory & context storage</div>
-        </div>
-
-        <a href="{approval_url}" class="btn btn-primary">Authorize Access</a>
-        <a href="{redirect_uri}?error=access_denied&state={state}" class="btn btn-secondary">Deny</a>
-
-        <div class="footer">
-            By authorizing, you allow this application to access MCP Audit Server tools.
-        </div>
-    </div>
-</body>
-</html>
-        ''')
-
-    # Approved - generate code and redirect
+    # Generate authorization code (auto-approve)
     auth_code = secrets.token_urlsafe(32)
 
     # Store code with metadata
