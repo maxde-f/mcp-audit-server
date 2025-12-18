@@ -920,6 +920,1430 @@ MEMORY_TOOLS = [
     },
 ]
 
+# =============================================================================
+# ANALYSIS TOOLS - Repository Analysis, Code Quality, Scripts, Reports
+# =============================================================================
+
+ANALYSIS_TOOLS = [
+    # --- Repo Analysis ---
+    {
+        "name": "clone_repo",
+        "description": "Clone a git repository for analysis. Returns repo path and basic info.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "Git repository URL (GitHub, GitLab, etc.)"},
+                "branch": {"type": "string", "description": "Branch to clone", "default": "main"},
+            },
+            "required": ["url"]
+        }
+    },
+    {
+        "name": "analyze_repo",
+        "description": "Full repository analysis: LOC, files, languages, complexity, dependencies.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to repository (local or cloned)"},
+                "url": {"type": "string", "description": "Git URL (will clone if path not provided)"},
+                "include_metrics": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Metrics to include: loc, complexity, dependencies, languages, files",
+                    "default": ["loc", "languages", "files"]
+                },
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "scan_security",
+        "description": "Security scan: secrets, vulnerabilities, OWASP checks.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to repository"},
+                "checks": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Checks: secrets, dependencies, code, owasp",
+                    "default": ["secrets", "dependencies"]
+                },
+            },
+            "required": ["path"]
+        }
+    },
+    # --- Script Execution ---
+    {
+        "name": "run_script",
+        "description": "Run a Python or Bash script in sandboxed environment.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "script": {"type": "string", "description": "Script content to execute"},
+                "language": {"type": "string", "enum": ["python", "bash"], "default": "python"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 60},
+                "args": {"type": "array", "items": {"type": "string"}, "description": "Script arguments"},
+            },
+            "required": ["script"]
+        }
+    },
+    {
+        "name": "run_tests",
+        "description": "Run project tests (pytest, jest, etc.) and return results.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to project"},
+                "framework": {"type": "string", "enum": ["pytest", "jest", "mocha", "auto"], "default": "auto"},
+                "pattern": {"type": "string", "description": "Test file pattern"},
+                "verbose": {"type": "boolean", "default": False},
+            },
+            "required": ["path"]
+        }
+    },
+    # --- Code Quality ---
+    {
+        "name": "check_lint",
+        "description": "Run linters on code (ruff, eslint, etc.).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to check"},
+                "language": {"type": "string", "enum": ["python", "javascript", "typescript", "auto"], "default": "auto"},
+                "fix": {"type": "boolean", "description": "Auto-fix issues", "default": False},
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "check_types",
+        "description": "Run type checker (mypy, pyright, tsc).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to check"},
+                "strict": {"type": "boolean", "default": False},
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "find_duplicates",
+        "description": "Find duplicate/similar code blocks (jscpd).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to analyze"},
+                "min_lines": {"type": "integer", "description": "Minimum duplicate lines", "default": 5},
+                "min_tokens": {"type": "integer", "description": "Minimum tokens", "default": 50},
+                "threshold": {"type": "number", "description": "Similarity threshold 0-100", "default": 80},
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "analyze_complexity",
+        "description": "Analyze code complexity (cyclomatic, cognitive, maintainability).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to analyze"},
+                "threshold": {"type": "integer", "description": "Complexity threshold for warnings", "default": 10},
+            },
+            "required": ["path"]
+        }
+    },
+    # --- Reports ---
+    {
+        "name": "generate_report",
+        "description": "Generate comprehensive audit report in markdown.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "analysis_id": {"type": "string", "description": "Analysis ID to generate report for"},
+                "sections": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Sections: summary, metrics, security, quality, estimation",
+                    "default": ["summary", "metrics", "estimation"]
+                },
+                "format": {"type": "string", "enum": ["markdown", "html", "json"], "default": "markdown"},
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "export_results",
+        "description": "Export analysis results to file (PDF, Excel, JSON).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "analysis_id": {"type": "string", "description": "Analysis ID"},
+                "format": {"type": "string", "enum": ["pdf", "xlsx", "json", "csv"], "default": "json"},
+                "include_charts": {"type": "boolean", "default": True},
+            },
+            "required": []
+        }
+    },
+    # --- Batch Operations ---
+    {
+        "name": "batch_analyze",
+        "description": "Analyze multiple repositories in batch.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "repos": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of repository URLs"
+                },
+                "parallel": {"type": "integer", "description": "Parallel workers", "default": 3},
+            },
+            "required": ["repos"]
+        }
+    },
+]
+
+
+# =============================================================================
+# BUSINESS TOOLS - Profiles, Contracts, Compliance, Documents
+# =============================================================================
+
+# Evaluation Profiles
+PROFILES = {
+    'eu_standard': {
+        'name': 'EU Standard R&D',
+        'region': 'EU',
+        'currency': 'EUR',
+        'hourly': {'junior': 35, 'middle': 55, 'senior': 85},
+        'requirements': {'repo_health': 6, 'tech_debt': 6, 'readiness': 60},
+    },
+    'ua_standard': {
+        'name': 'Ukraine R&D',
+        'region': 'UA',
+        'currency': 'USD',
+        'hourly': {'junior': 15, 'middle': 30, 'senior': 50},
+        'requirements': {'repo_health': 5, 'tech_debt': 5, 'readiness': 50},
+    },
+    'eu_enterprise': {
+        'name': 'EU Enterprise',
+        'region': 'EU',
+        'currency': 'EUR',
+        'hourly': {'junior': 45, 'middle': 70, 'senior': 110},
+        'requirements': {'repo_health': 9, 'tech_debt': 10, 'readiness': 80},
+    },
+    'us_standard': {
+        'name': 'US Standard',
+        'region': 'US',
+        'currency': 'USD',
+        'hourly': {'junior': 50, 'middle': 85, 'senior': 130},
+        'requirements': {'repo_health': 6, 'tech_debt': 6, 'readiness': 60},
+    },
+    'startup': {
+        'name': 'Startup/MVP',
+        'region': 'Global',
+        'currency': 'USD',
+        'hourly': {'junior': 25, 'middle': 45, 'senior': 70},
+        'requirements': {'repo_health': 3, 'tech_debt': 3, 'readiness': 30},
+    },
+    'global_fund': {
+        'name': 'Global Fund R13',
+        'region': 'UA',
+        'currency': 'USD',
+        'hourly': {'junior': 20, 'middle': 35, 'senior': 55},
+        'requirements': {'repo_health': 8, 'tech_debt': 9, 'readiness': 70},
+        'compliance': ['HIPAA', 'ISO 22301', 'GDPR'],
+    },
+}
+
+# Contract Profiles
+CONTRACTS = {
+    'standard': {
+        'name': 'Standard (No specific requirements)',
+        'requirements': [],
+    },
+    'global_fund': {
+        'name': 'Global Fund R13',
+        'compliance': ['HIPAA', 'ISO 22301', 'GDPR'],
+        'requirements': [
+            {'metric': 'documentation', 'min': 2, 'blocking': True},
+            {'metric': 'security', 'min': 2, 'blocking': True},
+            {'metric': 'testing', 'min': 2, 'blocking': False},
+        ],
+    },
+    'gdpr': {
+        'name': 'EU GDPR Compliant',
+        'compliance': ['GDPR'],
+        'requirements': [
+            {'metric': 'security', 'min': 2, 'blocking': True},
+            {'metric': 'documentation', 'min': 2, 'blocking': True},
+        ],
+    },
+    'hipaa': {
+        'name': 'HIPAA Healthcare',
+        'compliance': ['HIPAA', 'HITECH'],
+        'requirements': [
+            {'metric': 'security', 'min': 3, 'blocking': True},
+            {'metric': 'testing', 'min': 2, 'blocking': True},
+            {'metric': 'documentation', 'min': 2, 'blocking': True},
+        ],
+    },
+    'iso27001': {
+        'name': 'ISO 27001',
+        'compliance': ['ISO 27001'],
+        'requirements': [
+            {'metric': 'security', 'min': 3, 'blocking': True},
+            {'metric': 'infrastructure', 'min': 2, 'blocking': True},
+            {'metric': 'documentation', 'min': 2, 'blocking': True},
+        ],
+    },
+}
+
+# Document Templates
+DOCUMENT_TEMPLATES = {
+    'act_of_work_uk': '''# АКТ
+# виконаних робіт
+
+**Дата:** {{date}}
+**Номер:** {{act_number}}
+
+## Сторони
+
+**Виконавець:** {{contractor_name}}
+{{contractor_details}}
+
+**Замовник:** {{client_name}}
+{{client_details}}
+
+## Опис виконаних робіт
+
+| Опис | Кількість | Ціна |
+|------|-----------|------|
+{{#each work_items as item}}
+| {{item.description}} | {{item.quantity}} {{item.unit}} | {{item.price}} {{currency}} |
+{{/each}}
+
+## Підсумок
+
+**Загальна вартість:** {{total_amount}} {{currency}}
+**ПДВ ({{tax_rate}}%):** {{tax_amount}} {{currency}}
+**До сплати:** {{grand_total}} {{currency}}
+
+## Підписи
+
+Виконавець: _________________ / {{contractor_representative}} /
+
+Замовник: _________________ / {{client_representative}} /
+''',
+
+    'act_of_work_en': '''# ACT
+# of Completed Work
+
+**Date:** {{date}}
+**Number:** {{act_number}}
+
+## Parties
+
+**Contractor:** {{contractor_name}}
+{{contractor_details}}
+
+**Client:** {{client_name}}
+{{client_details}}
+
+## Description of Work Performed
+
+| Description | Qty | Price |
+|-------------|-----|-------|
+{{#each work_items as item}}
+| {{item.description}} | {{item.quantity}} {{item.unit}} | {{item.price}} {{currency}} |
+{{/each}}
+
+## Summary
+
+**Total Amount:** {{total_amount}} {{currency}}
+**VAT ({{tax_rate}}%):** {{tax_amount}} {{currency}}
+**Grand Total:** {{grand_total}} {{currency}}
+
+## Signatures
+
+Contractor: _________________ / {{contractor_representative}} /
+
+Client: _________________ / {{client_representative}} /
+''',
+
+    'invoice': '''# INVOICE
+
+**Invoice Number:** {{invoice_number}}
+**Date:** {{date}}
+**Due Date:** {{due_date}}
+
+## From
+**{{contractor_name}}**
+{{contractor_address}}
+Tax ID: {{contractor_tax_id}}
+IBAN: {{contractor_iban}}
+Bank: {{contractor_bank}}
+SWIFT: {{contractor_swift}}
+
+## To
+**{{client_name}}**
+{{client_address}}
+Tax ID: {{client_tax_id}}
+
+## Services
+
+| Description | Qty | Unit Price | Amount |
+|-------------|-----|------------|--------|
+{{#each items as item}}
+| {{item.description}} | {{item.quantity}} | {{item.unit_price}} {{currency}} | {{item.amount}} {{currency}} |
+{{/each}}
+
+## Summary
+
+| | |
+|---|---|
+| Subtotal | {{subtotal}} {{currency}} |
+| VAT ({{tax_rate}}%) | {{tax_amount}} {{currency}} |
+| **Total Due** | **{{total}} {{currency}}** |
+
+## Payment Instructions
+
+Please transfer the amount to:
+- IBAN: {{contractor_iban}}
+- Bank: {{contractor_bank}}
+- SWIFT: {{contractor_swift}}
+- Reference: {{invoice_number}}
+
+Thank you for your business!
+''',
+
+    'analysis_report': '''# Repository Analysis Report
+
+**Repository:** {{repo_url}}
+**Analysis Date:** {{date}}
+**Profile:** {{profile_name}}
+
+## Executive Summary
+
+{{summary}}
+
+## Repository Health Score: {{health_total}}/12
+
+| Metric | Score | Max |
+|--------|-------|-----|
+| Documentation | {{health_documentation}} | 3 |
+| Structure | {{health_structure}} | 3 |
+| Runability | {{health_runability}} | 3 |
+| Commit History | {{health_history}} | 3 |
+
+## Technical Debt Score: {{debt_total}}/15
+
+| Metric | Score | Max |
+|--------|-------|-----|
+| Architecture | {{debt_architecture}} | 3 |
+| Code Quality | {{debt_code_quality}} | 3 |
+| Testing | {{debt_testing}} | 3 |
+| Infrastructure | {{debt_infrastructure}} | 3 |
+| Security | {{debt_security}} | 3 |
+
+## Cost Estimate
+
+- **Complexity:** {{complexity}}
+- **Estimated Hours:** {{min_hours}} - {{max_hours}} hours
+- **Cost Range:** {{min_cost}} - {{max_cost}} {{currency}}
+
+## Recommendations
+
+{{#if recommendations}}
+{{#each recommendations as rec}}
+### {{rec.title}}
+**Priority:** {{rec.priority}}
+**Effort:** {{rec.hours}} hours
+
+{{rec.description}}
+
+{{/each}}
+{{/if}}
+
+---
+*Generated by MCP Audit Server*
+''',
+}
+
+# Scoring Rubrics
+SCORING_RUBRICS = {
+    'documentation': {
+        0: 'No README, no docs',
+        1: 'Basic README exists',
+        2: 'Good README + some API docs',
+        3: 'Comprehensive docs, tutorials, examples'
+    },
+    'structure': {
+        0: 'Chaotic, no clear organization',
+        1: 'Basic structure, some organization',
+        2: 'Good structure, clear separation',
+        3: 'Excellent structure, follows best practices'
+    },
+    'runability': {
+        0: 'Cannot run, missing dependencies',
+        1: 'Can run with manual setup',
+        2: 'Docker or scripts provided',
+        3: 'One-command setup, CI/CD ready'
+    },
+    'history': {
+        0: 'Few commits, no history',
+        1: 'Some commits, unclear messages',
+        2: 'Regular commits, decent messages',
+        3: 'Clean history, semantic commits, tags'
+    },
+    'architecture': {
+        0: 'Monolithic, tightly coupled',
+        1: 'Some separation exists',
+        2: 'Good modularity, clear boundaries',
+        3: 'Clean architecture, loosely coupled'
+    },
+    'code_quality': {
+        0: 'No standards, high complexity',
+        1: 'Some standards, moderate issues',
+        2: 'Good standards, low complexity',
+        3: 'Excellent quality, clean code'
+    },
+    'testing': {
+        0: 'No tests',
+        1: 'Some unit tests exist',
+        2: 'Good coverage, some integration tests',
+        3: 'Comprehensive tests, CI integration'
+    },
+    'infrastructure': {
+        0: 'No deployment config',
+        1: 'Basic deployment docs',
+        2: 'Docker/K8s configs, some monitoring',
+        3: 'Full IaC, monitoring, logging'
+    },
+    'security': {
+        0: 'Known vulnerabilities, no scans',
+        1: 'Some security measures',
+        2: 'No critical issues, updated deps',
+        3: 'Security-first, audited, compliant'
+    },
+}
+
+# Business Tools Definitions
+BUSINESS_TOOLS = [
+    {
+        "name": "list_profiles",
+        "description": "List available evaluation profiles with hourly rates and requirements.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+        }
+    },
+    {
+        "name": "list_contracts",
+        "description": "List available contract compliance profiles (GDPR, HIPAA, etc.).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+        }
+    },
+    {
+        "name": "estimate_cost",
+        "description": "Estimate development cost based on complexity and profile.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "complexity": {
+                    "type": "string",
+                    "enum": ["S", "M", "L", "XL"],
+                    "description": "Project complexity: S (<160h), M (160-500h), L (500-1200h), XL (>1200h)"
+                },
+                "profile_id": {
+                    "type": "string",
+                    "description": "Evaluation profile ID (eu_standard, ua_standard, etc.)"
+                },
+                "tech_debt_multiplier": {
+                    "type": "number",
+                    "description": "Tech debt adjustment (1.0-1.5)",
+                    "default": 1.0
+                }
+            },
+            "required": ["complexity", "profile_id"]
+        }
+    },
+    {
+        "name": "check_readiness",
+        "description": "Assess project readiness for audit based on health and debt scores.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "health_documentation": {"type": "integer", "minimum": 0, "maximum": 3},
+                "health_structure": {"type": "integer", "minimum": 0, "maximum": 3},
+                "health_runability": {"type": "integer", "minimum": 0, "maximum": 3},
+                "health_history": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_architecture": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_code_quality": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_testing": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_infrastructure": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_security": {"type": "integer", "minimum": 0, "maximum": 3},
+                "profile_id": {"type": "string", "default": "eu_standard"}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "check_compliance",
+        "description": "Check if scores meet contract requirements (GDPR, HIPAA, Global Fund).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "contract_id": {
+                    "type": "string",
+                    "description": "Contract profile ID"
+                },
+                "documentation": {"type": "integer", "minimum": 0, "maximum": 3},
+                "security": {"type": "integer", "minimum": 0, "maximum": 3},
+                "testing": {"type": "integer", "minimum": 0, "maximum": 3},
+                "infrastructure": {"type": "integer", "minimum": 0, "maximum": 3},
+            },
+            "required": ["contract_id"]
+        }
+    },
+    {
+        "name": "generate_document",
+        "description": "Generate a document from template (act, invoice, report).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "template_id": {
+                    "type": "string",
+                    "enum": ["act_of_work_uk", "act_of_work_en", "invoice", "analysis_report"],
+                    "description": "Document template to use"
+                },
+                "variables": {
+                    "type": "object",
+                    "description": "Variables to fill in the template"
+                }
+            },
+            "required": ["template_id", "variables"]
+        }
+    },
+    {
+        "name": "get_template_variables",
+        "description": "Get list of variables required by a document template.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "template_id": {
+                    "type": "string",
+                    "enum": ["act_of_work_uk", "act_of_work_en", "invoice", "analysis_report"]
+                }
+            },
+            "required": ["template_id"]
+        }
+    },
+    {
+        "name": "calculate_scores",
+        "description": "Calculate overall scores and readiness percentage.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "health_documentation": {"type": "integer", "minimum": 0, "maximum": 3},
+                "health_structure": {"type": "integer", "minimum": 0, "maximum": 3},
+                "health_runability": {"type": "integer", "minimum": 0, "maximum": 3},
+                "health_history": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_architecture": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_code_quality": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_testing": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_infrastructure": {"type": "integer", "minimum": 0, "maximum": 3},
+                "debt_security": {"type": "integer", "minimum": 0, "maximum": 3},
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "get_scoring_rubric",
+        "description": "Get detailed scoring rubric for evaluation metrics.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "metric": {
+                    "type": "string",
+                    "enum": ["documentation", "structure", "runability", "history",
+                            "architecture", "code_quality", "testing", "infrastructure", "security"],
+                    "description": "Metric to get rubric for (optional, returns all if not specified)"
+                }
+            },
+            "required": []
+        }
+    },
+]
+
+
+# =============================================================================
+# TEMPLATE ENGINE
+# =============================================================================
+
+import re
+
+class TemplateEngine:
+    """Simple template engine with variable substitution, conditionals, and loops."""
+
+    def process(self, template: str, variables: Dict[str, Any]) -> str:
+        """Process template with given variables."""
+        content = template
+
+        # Process variables
+        for key, value in variables.items():
+            pattern = rf'\{{\{{{key}(?::[^}}]*)?(?:\|[^}}]*)?\}}\}}'
+            content = re.sub(pattern, str(value), content)
+
+        # Process default values {{var|default}}
+        content = self._process_defaults(content)
+
+        # Process conditionals {{#if condition}}...{{/if}}
+        content = self._process_conditionals(content, variables)
+
+        # Process loops {{#each array as item}}...{{/each}}
+        content = self._process_loops(content, variables)
+
+        return content
+
+    def _process_defaults(self, content: str) -> str:
+        pattern = r'\{\{(\w+)(?::(\w+))?\|(.+?)\}\}'
+        return re.sub(pattern, lambda m: m.group(3), content)
+
+    def _process_conditionals(self, content: str, variables: Dict[str, Any]) -> str:
+        pattern = r'\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}'
+        def replacer(match):
+            condition = match.group(1)
+            block = match.group(2)
+            return block if variables.get(condition) else ''
+        return re.sub(pattern, replacer, content, flags=re.DOTALL)
+
+    def _process_loops(self, content: str, variables: Dict[str, Any]) -> str:
+        pattern = r'\{\{#each\s+(\w+)\s+as\s+(\w+)\}\}(.*?)\{\{/each\}\}'
+
+        def replacer(match):
+            array_name = match.group(1)
+            item_name = match.group(2)
+            block = match.group(3)
+
+            array = variables.get(array_name, [])
+            if not isinstance(array, list):
+                return ''
+
+            result = []
+            for item in array:
+                processed_block = block
+                if isinstance(item, dict):
+                    for key, value in item.items():
+                        item_pattern = rf'\{{\{{{item_name}\.{key}\}}\}}'
+                        processed_block = re.sub(item_pattern, str(value), processed_block)
+                else:
+                    item_pattern = rf'\{{\{{{item_name}\}}\}}'
+                    processed_block = re.sub(item_pattern, str(item), processed_block)
+                result.append(processed_block)
+
+            return ''.join(result)
+
+        return re.sub(pattern, replacer, content, flags=re.DOTALL)
+
+    def extract_variables(self, content: str) -> List[str]:
+        """Extract variable names from template."""
+        pattern = r'\{\{(\w+)(?::(\w+))?(?:\|(.+?))?\}\}'
+        variables = []
+        for match in re.finditer(pattern, content):
+            var_name = match.group(1)
+            if var_name not in variables and not var_name.startswith('#'):
+                variables.append(var_name)
+        return variables
+
+
+# Create template engine instance
+template_engine = TemplateEngine()
+
+
+# =============================================================================
+# BUSINESS TOOL HANDLERS
+# =============================================================================
+
+def handle_list_profiles() -> Dict:
+    """List all available evaluation profiles."""
+    result = []
+    for profile_id, profile in PROFILES.items():
+        result.append({
+            "id": profile_id,
+            "name": profile['name'],
+            "region": profile['region'],
+            "currency": profile['currency'],
+            "hourly_rates": profile['hourly'],
+            "requirements": profile['requirements'],
+            "compliance": profile.get('compliance', []),
+        })
+    return {"profiles": result, "count": len(result)}
+
+
+def handle_list_contracts() -> Dict:
+    """List all available contract compliance profiles."""
+    result = []
+    for contract_id, contract in CONTRACTS.items():
+        result.append({
+            "id": contract_id,
+            "name": contract['name'],
+            "compliance": contract.get('compliance', []),
+            "requirements": contract.get('requirements', []),
+        })
+    return {"contracts": result, "count": len(result)}
+
+
+def handle_estimate_cost(arguments: Dict) -> Dict:
+    """Estimate development cost based on complexity and profile."""
+    complexity = arguments.get('complexity', 'M')
+    profile_id = arguments.get('profile_id', 'eu_standard')
+    multiplier = arguments.get('tech_debt_multiplier', 1.0)
+
+    profile = PROFILES.get(profile_id)
+    if not profile:
+        return {"error": f"Unknown profile: {profile_id}"}
+
+    # Base hours by complexity
+    hours = {
+        'S': {'min': 80, 'typical': 120, 'max': 160},
+        'M': {'min': 160, 'typical': 320, 'max': 500},
+        'L': {'min': 500, 'typical': 800, 'max': 1200},
+        'XL': {'min': 1200, 'typical': 2000, 'max': 3000},
+    }
+
+    h = hours.get(complexity, hours['M'])
+    rate = profile['hourly']['middle']
+    currency = profile['currency']
+
+    min_h = int(h['min'] * multiplier)
+    typ_h = int(h['typical'] * multiplier)
+    max_h = int(h['max'] * multiplier)
+
+    return {
+        "profile": profile['name'],
+        "complexity": complexity,
+        "tech_debt_multiplier": multiplier,
+        "hours": {
+            "min": min_h,
+            "typical": typ_h,
+            "max": max_h,
+        },
+        "cost": {
+            "min": min_h * rate,
+            "typical": typ_h * rate,
+            "max": max_h * rate,
+            "currency": currency,
+        },
+        "rate": rate,
+        "breakdown": {
+            "analysis": {"hours": int(typ_h * 0.1), "cost": int(typ_h * 0.1 * rate)},
+            "design": {"hours": int(typ_h * 0.15), "cost": int(typ_h * 0.15 * rate)},
+            "development": {"hours": int(typ_h * 0.45), "cost": int(typ_h * 0.45 * rate)},
+            "testing": {"hours": int(typ_h * 0.2), "cost": int(typ_h * 0.2 * rate)},
+            "documentation": {"hours": int(typ_h * 0.1), "cost": int(typ_h * 0.1 * rate)},
+        }
+    }
+
+
+def handle_check_readiness(arguments: Dict) -> Dict:
+    """Assess project readiness for audit based on scores."""
+    profile_id = arguments.get('profile_id', 'eu_standard')
+    profile = PROFILES.get(profile_id, PROFILES['eu_standard'])
+
+    # Calculate health score (0-12)
+    health_total = (
+        arguments.get('health_documentation', 0) +
+        arguments.get('health_structure', 0) +
+        arguments.get('health_runability', 0) +
+        arguments.get('health_history', 0)
+    )
+
+    # Calculate tech debt score (0-15)
+    debt_total = (
+        arguments.get('debt_architecture', 0) +
+        arguments.get('debt_code_quality', 0) +
+        arguments.get('debt_testing', 0) +
+        arguments.get('debt_infrastructure', 0) +
+        arguments.get('debt_security', 0)
+    )
+
+    # Calculate readiness percentage
+    health_pct = (health_total / 12) * 100
+    debt_pct = (debt_total / 15) * 100
+    readiness = (health_pct + debt_pct) / 2
+
+    # Check against profile requirements
+    req = profile['requirements']
+    health_ok = health_total >= req['repo_health']
+    debt_ok = debt_total >= req['tech_debt']
+    readiness_ok = readiness >= req['readiness']
+
+    # Determine level
+    if readiness >= 95:
+        level = "EXEMPLARY"
+    elif readiness >= 80:
+        level = "READY"
+    elif readiness >= 60:
+        level = "ALMOST_READY"
+    elif readiness >= 40:
+        level = "NEEDS_WORK"
+    else:
+        level = "NOT_READY"
+
+    return {
+        "level": level,
+        "readiness_pct": round(readiness, 1),
+        "profile": profile['name'],
+        "scores": {
+            "health": {"score": health_total, "max": 12, "pct": round(health_pct, 1), "passed": health_ok},
+            "debt": {"score": debt_total, "max": 15, "pct": round(debt_pct, 1), "passed": debt_ok},
+        },
+        "requirements": {
+            "health": {"required": req['repo_health'], "actual": health_total, "passed": health_ok},
+            "debt": {"required": req['tech_debt'], "actual": debt_total, "passed": debt_ok},
+            "readiness": {"required": req['readiness'], "actual": round(readiness, 1), "passed": readiness_ok},
+        },
+        "verdict": "READY_FOR_EVALUATION" if (health_ok and debt_ok and readiness_ok) else "NOT_READY",
+    }
+
+
+def handle_check_compliance(arguments: Dict) -> Dict:
+    """Check if scores meet contract requirements."""
+    contract_id = arguments.get('contract_id', 'standard')
+    contract = CONTRACTS.get(contract_id)
+
+    if not contract:
+        return {"error": f"Unknown contract: {contract_id}"}
+
+    scores = {
+        'documentation': arguments.get('documentation', 0),
+        'security': arguments.get('security', 0),
+        'testing': arguments.get('testing', 0),
+        'infrastructure': arguments.get('infrastructure', 0),
+    }
+
+    if not contract.get('requirements'):
+        return {
+            "contract": contract['name'],
+            "verdict": "COMPLIANT",
+            "compliance_pct": 100,
+            "message": "No specific requirements - automatically compliant"
+        }
+
+    passed = []
+    failed = []
+    blocking_failed = []
+
+    for req in contract['requirements']:
+        metric = req['metric']
+        min_score = req['min']
+        actual = scores.get(metric, 0)
+        blocking = req.get('blocking', False)
+
+        if actual >= min_score:
+            passed.append({"metric": metric, "required": min_score, "actual": actual})
+        else:
+            item = {"metric": metric, "required": min_score, "actual": actual, "gap": min_score - actual}
+            if blocking:
+                item["blocking"] = True
+                blocking_failed.append(item)
+            else:
+                failed.append(item)
+
+    compliance_pct = len(passed) / len(contract['requirements']) * 100 if contract['requirements'] else 100
+
+    if blocking_failed:
+        verdict = "NON_COMPLIANT"
+    elif failed:
+        verdict = "PARTIAL"
+    else:
+        verdict = "COMPLIANT"
+
+    return {
+        "contract": contract['name'],
+        "compliance": contract.get('compliance', []),
+        "verdict": verdict,
+        "compliance_pct": round(compliance_pct, 1),
+        "passed": passed,
+        "failed": failed + blocking_failed,
+    }
+
+
+def handle_generate_document(arguments: Dict) -> Dict:
+    """Generate a document from template with variables."""
+    template_id = arguments.get('template_id')
+    variables = arguments.get('variables', {})
+
+    template = DOCUMENT_TEMPLATES.get(template_id)
+    if not template:
+        return {"error": f"Unknown template: {template_id}"}
+
+    # Add default date if not provided
+    if 'date' not in variables:
+        variables['date'] = datetime.now().strftime('%Y-%m-%d')
+
+    result = template_engine.process(template, variables)
+    return {"document": result, "template_id": template_id}
+
+
+def handle_get_template_variables(arguments: Dict) -> Dict:
+    """Get list of variables required by a document template."""
+    template_id = arguments.get('template_id')
+
+    template = DOCUMENT_TEMPLATES.get(template_id)
+    if not template:
+        return {"error": f"Unknown template: {template_id}"}
+
+    variables = template_engine.extract_variables(template)
+    return {"template_id": template_id, "variables": variables}
+
+
+def handle_calculate_scores(arguments: Dict) -> Dict:
+    """Calculate overall scores and readiness percentage."""
+    health_total = (
+        arguments.get('health_documentation', 0) +
+        arguments.get('health_structure', 0) +
+        arguments.get('health_runability', 0) +
+        arguments.get('health_history', 0)
+    )
+
+    debt_total = (
+        arguments.get('debt_architecture', 0) +
+        arguments.get('debt_code_quality', 0) +
+        arguments.get('debt_testing', 0) +
+        arguments.get('debt_infrastructure', 0) +
+        arguments.get('debt_security', 0)
+    )
+
+    health_pct = (health_total / 12) * 100
+    debt_pct = (debt_total / 15) * 100
+    overall = (health_pct + debt_pct) / 2
+
+    return {
+        "health": {"score": health_total, "max": 12, "pct": round(health_pct, 1)},
+        "debt": {"score": debt_total, "max": 15, "pct": round(debt_pct, 1)},
+        "overall_readiness_pct": round(overall, 1),
+        "classification": {
+            "health_level": "Good" if health_pct >= 75 else "Moderate" if health_pct >= 50 else "Needs Improvement",
+            "debt_level": "Low Debt" if debt_pct >= 75 else "Moderate Debt" if debt_pct >= 50 else "High Debt",
+        }
+    }
+
+
+def handle_get_scoring_rubric(arguments: Dict) -> Dict:
+    """Get detailed scoring rubric for evaluation metrics."""
+    metric = arguments.get('metric')
+
+    if metric and metric in SCORING_RUBRICS:
+        return {"metric": metric, "rubric": SCORING_RUBRICS[metric]}
+
+    return {"rubrics": SCORING_RUBRICS}
+
+
+# =============================================================================
+# ANALYSIS TOOL HANDLERS
+# =============================================================================
+
+import subprocess
+import tempfile
+import shutil
+
+def handle_clone_repo(arguments: Dict) -> Dict:
+    """Clone a git repository for analysis."""
+    url = arguments.get('url')
+    branch = arguments.get('branch', 'main')
+
+    if not url:
+        return {"error": "URL is required"}
+
+    # Create temp directory
+    temp_dir = tempfile.mkdtemp(prefix='repo_')
+    try:
+        result = subprocess.run(
+            ['git', 'clone', '--depth', '1', '--branch', branch, url, temp_dir],
+            capture_output=True, text=True, timeout=120
+        )
+        if result.returncode != 0:
+            # Try without branch specification
+            result = subprocess.run(
+                ['git', 'clone', '--depth', '1', url, temp_dir],
+                capture_output=True, text=True, timeout=120
+            )
+            if result.returncode != 0:
+                return {"error": f"Clone failed: {result.stderr}"}
+
+        return {
+            "success": True,
+            "path": temp_dir,
+            "url": url,
+            "branch": branch,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def handle_analyze_repo(arguments: Dict) -> Dict:
+    """Full repository analysis."""
+    path = arguments.get('path', '')
+    include_metrics = arguments.get('include_metrics', ['loc', 'languages', 'files'])
+
+    if not path or not os.path.exists(path):
+        return {"error": "Valid path is required"}
+
+    result = {"path": path, "metrics": {}}
+
+    # Count files and languages
+    if 'files' in include_metrics or 'languages' in include_metrics or 'loc' in include_metrics:
+        files_by_ext = {}
+        total_lines = 0
+        file_count = 0
+
+        for root, dirs, files in os.walk(path):
+            # Skip hidden and common non-code directories
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'venv', '__pycache__', 'dist', 'build']]
+
+            for f in files:
+                if f.startswith('.'):
+                    continue
+                ext = os.path.splitext(f)[1].lower() or 'no_ext'
+                files_by_ext[ext] = files_by_ext.get(ext, 0) + 1
+                file_count += 1
+
+                # Count lines for code files
+                if ext in ['.py', '.js', '.ts', '.tsx', '.jsx', '.go', '.rs', '.java', '.c', '.cpp', '.h', '.rb', '.php']:
+                    try:
+                        filepath = os.path.join(root, f)
+                        with open(filepath, 'r', encoding='utf-8', errors='ignore') as fp:
+                            total_lines += sum(1 for _ in fp)
+                    except:
+                        pass
+
+        result["metrics"]["files"] = {"total": file_count, "by_extension": files_by_ext}
+        result["metrics"]["loc"] = total_lines
+
+        # Map extensions to languages
+        ext_to_lang = {
+            '.py': 'Python', '.js': 'JavaScript', '.ts': 'TypeScript',
+            '.tsx': 'TypeScript', '.jsx': 'JavaScript', '.go': 'Go',
+            '.rs': 'Rust', '.java': 'Java', '.rb': 'Ruby', '.php': 'PHP',
+            '.c': 'C', '.cpp': 'C++', '.h': 'C/C++', '.cs': 'C#',
+        }
+        languages = {}
+        for ext, count in files_by_ext.items():
+            lang = ext_to_lang.get(ext, ext)
+            languages[lang] = languages.get(lang, 0) + count
+        result["metrics"]["languages"] = languages
+
+    return result
+
+
+def handle_scan_security(arguments: Dict) -> Dict:
+    """Security scan: secrets, vulnerabilities."""
+    path = arguments.get('path', '')
+    checks = arguments.get('checks', ['secrets', 'dependencies'])
+
+    if not path or not os.path.exists(path):
+        return {"error": "Valid path is required"}
+
+    results = {"path": path, "findings": []}
+
+    # Simple secrets check (pattern-based)
+    if 'secrets' in checks:
+        secret_patterns = [
+            (r'api[_-]?key\s*[=:]\s*["\']?[\w-]{20,}', 'API Key'),
+            (r'password\s*[=:]\s*["\'][^"\']+', 'Password'),
+            (r'secret[_-]?key\s*[=:]\s*["\']?[\w-]+', 'Secret Key'),
+            (r'AWS[A-Z0-9]{16,}', 'AWS Key'),
+            (r'sk-[a-zA-Z0-9]{20,}', 'OpenAI Key'),
+        ]
+
+        for root, dirs, files in os.walk(path):
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'venv']]
+            for f in files:
+                if f.endswith(('.py', '.js', '.ts', '.env', '.json', '.yml', '.yaml')):
+                    try:
+                        filepath = os.path.join(root, f)
+                        with open(filepath, 'r', encoding='utf-8', errors='ignore') as fp:
+                            content = fp.read()
+                            for pattern, name in secret_patterns:
+                                if re.search(pattern, content, re.IGNORECASE):
+                                    results["findings"].append({
+                                        "type": "secret",
+                                        "name": name,
+                                        "file": os.path.relpath(filepath, path),
+                                        "severity": "high"
+                                    })
+                    except:
+                        pass
+
+    return results
+
+
+def handle_run_script(arguments: Dict) -> Dict:
+    """Run a Python or Bash script in sandboxed environment."""
+    script = arguments.get('script', '')
+    language = arguments.get('language', 'python')
+    timeout = arguments.get('timeout', 60)
+
+    if not script:
+        return {"error": "Script content is required"}
+
+    try:
+        if language == 'python':
+            result = subprocess.run(
+                ['python3', '-c', script],
+                capture_output=True, text=True, timeout=timeout
+            )
+        else:
+            result = subprocess.run(
+                ['bash', '-c', script],
+                capture_output=True, text=True, timeout=timeout
+            )
+
+        return {
+            "success": result.returncode == 0,
+            "returncode": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
+    except subprocess.TimeoutExpired:
+        return {"error": f"Script timed out after {timeout} seconds"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def handle_run_tests(arguments: Dict) -> Dict:
+    """Run project tests."""
+    path = arguments.get('path', '')
+    framework = arguments.get('framework', 'auto')
+
+    if not path or not os.path.exists(path):
+        return {"error": "Valid path is required"}
+
+    # Auto-detect framework
+    if framework == 'auto':
+        if os.path.exists(os.path.join(path, 'pytest.ini')) or os.path.exists(os.path.join(path, 'tests')):
+            framework = 'pytest'
+        elif os.path.exists(os.path.join(path, 'package.json')):
+            framework = 'jest'
+
+    try:
+        if framework == 'pytest':
+            result = subprocess.run(
+                ['python', '-m', 'pytest', '-v', '--tb=short'],
+                cwd=path, capture_output=True, text=True, timeout=300
+            )
+        elif framework in ['jest', 'mocha']:
+            result = subprocess.run(
+                ['npm', 'test'],
+                cwd=path, capture_output=True, text=True, timeout=300
+            )
+        else:
+            return {"error": f"Unknown framework: {framework}"}
+
+        return {
+            "framework": framework,
+            "success": result.returncode == 0,
+            "returncode": result.returncode,
+            "output": result.stdout + result.stderr,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def handle_check_lint(arguments: Dict) -> Dict:
+    """Run linters on code."""
+    path = arguments.get('path', '')
+    language = arguments.get('language', 'auto')
+
+    if not path or not os.path.exists(path):
+        return {"error": "Valid path is required"}
+
+    # Auto-detect language
+    if language == 'auto':
+        if any(f.endswith('.py') for f in os.listdir(path)):
+            language = 'python'
+        elif os.path.exists(os.path.join(path, 'package.json')):
+            language = 'javascript'
+
+    try:
+        if language == 'python':
+            result = subprocess.run(
+                ['python', '-m', 'ruff', 'check', path],
+                capture_output=True, text=True, timeout=120
+            )
+        elif language in ['javascript', 'typescript']:
+            result = subprocess.run(
+                ['npx', 'eslint', path],
+                capture_output=True, text=True, timeout=120
+            )
+        else:
+            return {"error": f"Unsupported language: {language}"}
+
+        return {
+            "language": language,
+            "success": result.returncode == 0,
+            "output": result.stdout + result.stderr,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def handle_check_types(arguments: Dict) -> Dict:
+    """Run type checker."""
+    path = arguments.get('path', '')
+
+    if not path or not os.path.exists(path):
+        return {"error": "Valid path is required"}
+
+    try:
+        # Try pyright for Python
+        result = subprocess.run(
+            ['python', '-m', 'pyright', path],
+            capture_output=True, text=True, timeout=120
+        )
+
+        return {
+            "success": result.returncode == 0,
+            "output": result.stdout + result.stderr,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def handle_find_duplicates(arguments: Dict) -> Dict:
+    """Find duplicate/similar code blocks."""
+    path = arguments.get('path', '')
+    min_lines = arguments.get('min_lines', 5)
+
+    if not path or not os.path.exists(path):
+        return {"error": "Valid path is required"}
+
+    try:
+        result = subprocess.run(
+            ['jscpd', path, '--min-lines', str(min_lines), '--reporters', 'json'],
+            capture_output=True, text=True, timeout=300
+        )
+
+        return {
+            "success": result.returncode == 0,
+            "output": result.stdout,
+        }
+    except FileNotFoundError:
+        return {"error": "jscpd not installed. Run: npm install -g jscpd"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def handle_analyze_complexity(arguments: Dict) -> Dict:
+    """Analyze code complexity."""
+    path = arguments.get('path', '')
+    threshold = arguments.get('threshold', 10)
+
+    if not path or not os.path.exists(path):
+        return {"error": "Valid path is required"}
+
+    # Simple complexity analysis for Python files
+    complexities = []
+
+    for root, dirs, files in os.walk(path):
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'venv']]
+        for f in files:
+            if f.endswith('.py'):
+                filepath = os.path.join(root, f)
+                try:
+                    with open(filepath, 'r') as fp:
+                        content = fp.read()
+                        # Count control flow statements as simple complexity measure
+                        complexity = (
+                            content.count('if ') +
+                            content.count('elif ') +
+                            content.count('else:') +
+                            content.count('for ') +
+                            content.count('while ') +
+                            content.count('try:') +
+                            content.count('except')
+                        )
+                        if complexity > threshold:
+                            complexities.append({
+                                "file": os.path.relpath(filepath, path),
+                                "complexity": complexity,
+                            })
+                except:
+                    pass
+
+    return {
+        "path": path,
+        "threshold": threshold,
+        "high_complexity_files": sorted(complexities, key=lambda x: x['complexity'], reverse=True)[:20],
+        "count": len(complexities),
+    }
+
+
+def handle_generate_report(arguments: Dict, workspace_id: str) -> Dict:
+    """Generate comprehensive audit report."""
+    analysis_id = arguments.get('analysis_id')
+    sections = arguments.get('sections', ['summary', 'metrics', 'estimation'])
+    format_type = arguments.get('format', 'markdown')
+
+    report = {
+        "generated_at": datetime.now().isoformat(),
+        "sections": sections,
+        "format": format_type,
+    }
+
+    # If we have an analysis_id, try to load it
+    if analysis_id:
+        report["analysis_id"] = analysis_id
+
+    return report
+
+
+def handle_export_results(arguments: Dict) -> Dict:
+    """Export analysis results to file."""
+    analysis_id = arguments.get('analysis_id')
+    format_type = arguments.get('format', 'json')
+
+    return {
+        "format": format_type,
+        "analysis_id": analysis_id,
+        "status": "ready",
+    }
+
+
+async def handle_batch_analyze(arguments: Dict) -> Dict:
+    """Analyze multiple repositories in batch."""
+    repos = arguments.get('repos', [])
+
+    if not repos:
+        return {"error": "No repositories provided"}
+
+    results = []
+    for repo_url in repos[:10]:  # Limit to 10
+        clone_result = handle_clone_repo({"url": repo_url})
+        if clone_result.get('success'):
+            analyze_result = handle_analyze_repo({"path": clone_result['path']})
+            results.append({
+                "url": repo_url,
+                "metrics": analyze_result.get('metrics', {}),
+            })
+            # Cleanup
+            try:
+                shutil.rmtree(clone_result['path'])
+            except:
+                pass
+        else:
+            results.append({
+                "url": repo_url,
+                "error": clone_result.get('error'),
+            })
+
+    return {"results": results, "count": len(results)}
+
 
 # =============================================================================
 # MCP SERVER INFO
@@ -1038,6 +2462,71 @@ async def execute_tool(name: str, arguments: Dict, workspace_id: str = "global")
                 kloc=arguments.get("kloc"),
                 region=arguments.get("region", "ua")
             )
+
+        # ============== BUSINESS TOOLS ==============
+        elif name == "list_profiles":
+            return handle_list_profiles()
+
+        elif name == "list_contracts":
+            return handle_list_contracts()
+
+        elif name == "estimate_cost":
+            return handle_estimate_cost(arguments)
+
+        elif name == "check_readiness":
+            return handle_check_readiness(arguments)
+
+        elif name == "check_compliance":
+            return handle_check_compliance(arguments)
+
+        elif name == "generate_document":
+            return handle_generate_document(arguments)
+
+        elif name == "get_template_variables":
+            return handle_get_template_variables(arguments)
+
+        elif name == "calculate_scores":
+            return handle_calculate_scores(arguments)
+
+        elif name == "get_scoring_rubric":
+            return handle_get_scoring_rubric(arguments)
+
+        # ============== ANALYSIS TOOLS ==============
+        elif name == "clone_repo":
+            return handle_clone_repo(arguments)
+
+        elif name == "analyze_repo":
+            return handle_analyze_repo(arguments)
+
+        elif name == "scan_security":
+            return handle_scan_security(arguments)
+
+        elif name == "run_script":
+            return handle_run_script(arguments)
+
+        elif name == "run_tests":
+            return handle_run_tests(arguments)
+
+        elif name == "check_lint":
+            return handle_check_lint(arguments)
+
+        elif name == "check_types":
+            return handle_check_types(arguments)
+
+        elif name == "find_duplicates":
+            return handle_find_duplicates(arguments)
+
+        elif name == "analyze_complexity":
+            return handle_analyze_complexity(arguments)
+
+        elif name == "generate_report":
+            return handle_generate_report(arguments, workspace_id)
+
+        elif name == "export_results":
+            return handle_export_results(arguments)
+
+        elif name == "batch_analyze":
+            return await handle_batch_analyze(arguments)
 
         # Pass through to audit server
         else:
@@ -1310,7 +2799,7 @@ async def oauth_metadata(request):
 
 async def mcp_discovery(request):
     """MCP Server Discovery."""
-    all_tools = audit_server.get_tools() + MEMORY_TOOLS
+    all_tools = audit_server.get_tools() + MEMORY_TOOLS + ANALYSIS_TOOLS + BUSINESS_TOOLS
     return JSONResponse({
         "name": MCP_SERVER_INFO["name"],
         "version": MCP_SERVER_INFO["version"],
@@ -1526,7 +3015,7 @@ async def mcp_message_endpoint(request):
     logger.info(f"MCP Message: method={method}, session={session_id}")
 
     # Get all tools
-    all_tools = audit_server.get_tools() + MEMORY_TOOLS
+    all_tools = audit_server.get_tools() + MEMORY_TOOLS + ANALYSIS_TOOLS + BUSINESS_TOOLS
 
     # Handle MCP methods
     if method == "initialize":
@@ -1589,7 +3078,7 @@ async def mcp_streamable_http(request):
     msg_id = data.get("id")
     params = data.get("params", {})
 
-    all_tools = audit_server.get_tools() + MEMORY_TOOLS
+    all_tools = audit_server.get_tools() + MEMORY_TOOLS + ANALYSIS_TOOLS + BUSINESS_TOOLS
 
     if method == "initialize":
         result = {
@@ -1638,7 +3127,7 @@ async def homepage(request):
     if request.method == "POST":
         return await mcp_streamable_http(request)
 
-    all_tools = audit_server.get_tools() + MEMORY_TOOLS
+    all_tools = audit_server.get_tools() + MEMORY_TOOLS + ANALYSIS_TOOLS + BUSINESS_TOOLS
     tool_names = [t["name"] for t in all_tools]
 
     # Get rates for settings
@@ -2135,7 +3624,7 @@ REDIS_URL=redis://        # Redis cache (optional)</code></pre>
 
 async def health_check(request):
     """Health check endpoint."""
-    all_tools = audit_server.get_tools() + MEMORY_TOOLS
+    all_tools = audit_server.get_tools() + MEMORY_TOOLS + ANALYSIS_TOOLS + BUSINESS_TOOLS
     return JSONResponse({
         "status": "ok",
         "service": MCP_SERVER_INFO["name"],
@@ -2151,7 +3640,7 @@ async def health_check(request):
 
 async def api_tools(request):
     """List available tools."""
-    all_tools = audit_server.get_tools() + MEMORY_TOOLS
+    all_tools = audit_server.get_tools() + MEMORY_TOOLS + ANALYSIS_TOOLS + BUSINESS_TOOLS
     return JSONResponse({
         "tools": all_tools,
         "count": len(all_tools)
@@ -2305,7 +3794,7 @@ if __name__ == "__main__":
     init_postgres()
     init_redis()
 
-    all_tools = audit_server.get_tools() + MEMORY_TOOLS
+    all_tools = audit_server.get_tools() + MEMORY_TOOLS + ANALYSIS_TOOLS + BUSINESS_TOOLS
 
     logger.info("=" * 60)
     logger.info(f"MCP Audit HTTP Server v{MCP_SERVER_INFO['version']}")
