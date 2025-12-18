@@ -184,11 +184,27 @@ def init_postgres():
             )
         """)
 
+        # Documents table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS documents (
+                id VARCHAR(32) PRIMARY KEY,
+                workspace_id VARCHAR(64),
+                doc_type VARCHAR(50) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                content TEXT NOT NULL,
+                metadata JSONB DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # Create indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_workspace ON claude_memory(workspace_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_type ON claude_memory(type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_decisions_workspace ON claude_decisions(workspace_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_analysis_workspace ON analysis_results(workspace_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_documents_workspace ON documents(workspace_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_documents_type ON documents(doc_type)")
 
         db_connection.commit()
         logger.info("PostgreSQL initialized successfully")
@@ -604,6 +620,8 @@ class SettingsManager:
         """Get all settings for a workspace."""
         if workspace_id not in _settings_store:
             _settings_store[workspace_id] = json.loads(json.dumps(DEFAULT_SETTINGS))
+            # Load from DB if available
+            SettingsManager._load_from_db(workspace_id)
         return _settings_store[workspace_id]
 
     @staticmethod
@@ -761,6 +779,138 @@ class SettingsManager:
                 _settings_store[workspace_id][key] = value
         except:
             pass
+
+
+# =============================================================================
+# DOCUMENT STORAGE
+# =============================================================================
+
+_documents_store: Dict[str, List[Dict]] = {}
+
+class DocumentStore:
+    """Persistent document storage for contracts, policies, requirements."""
+
+    @staticmethod
+    def add(workspace_id: str, doc_type: str, name: str, content: str, metadata: Dict = None) -> Dict:
+        """Add a document to storage."""
+        doc_id = hashlib.md5(f"{workspace_id}:{name}:{datetime.now().isoformat()}".encode()).hexdigest()[:16]
+
+        doc = {
+            "id": doc_id,
+            "workspace_id": workspace_id,
+            "doc_type": doc_type,
+            "name": name,
+            "content": content,
+            "metadata": metadata or {},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Store in PostgreSQL if available
+        if db_connection:
+            try:
+                cursor = db_connection.cursor()
+                cursor.execute("""
+                    INSERT INTO documents (id, workspace_id, doc_type, name, content, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET content = %s, metadata = %s, updated_at = NOW()
+                """, (doc_id, workspace_id, doc_type, name, content, json.dumps(metadata or {}),
+                      content, json.dumps(metadata or {})))
+                db_connection.commit()
+                logger.info(f"Document saved to PostgreSQL: {name}")
+            except Exception as e:
+                logger.error(f"Error saving document to DB: {e}")
+                db_connection.rollback()
+        else:
+            # In-memory fallback
+            if workspace_id not in _documents_store:
+                _documents_store[workspace_id] = []
+            _documents_store[workspace_id].append(doc)
+
+        return {"success": True, "id": doc_id, "name": name}
+
+    @staticmethod
+    def list(workspace_id: str = "global", doc_type: str = None) -> List[Dict]:
+        """List all documents, optionally filtered by type."""
+        documents = []
+
+        if db_connection:
+            try:
+                cursor = db_connection.cursor()
+                if doc_type:
+                    cursor.execute(
+                        "SELECT id, doc_type, name, metadata, created_at FROM documents WHERE workspace_id = %s AND doc_type = %s ORDER BY created_at DESC",
+                        (workspace_id, doc_type)
+                    )
+                else:
+                    cursor.execute(
+                        "SELECT id, doc_type, name, metadata, created_at FROM documents WHERE workspace_id = %s ORDER BY created_at DESC",
+                        (workspace_id,)
+                    )
+                for row in cursor.fetchall():
+                    documents.append({
+                        "id": row[0],
+                        "type": row[1],
+                        "name": row[2],
+                        "metadata": row[3] if row[3] else {},
+                        "created_at": row[4].isoformat() if row[4] else None,
+                    })
+            except Exception as e:
+                logger.error(f"Error listing documents: {e}")
+        else:
+            # In-memory fallback
+            docs = _documents_store.get(workspace_id, [])
+            if doc_type:
+                docs = [d for d in docs if d["doc_type"] == doc_type]
+            documents = [{"id": d["id"], "type": d["doc_type"], "name": d["name"],
+                         "metadata": d.get("metadata", {}), "created_at": d.get("created_at")} for d in docs]
+
+        return documents
+
+    @staticmethod
+    def get(workspace_id: str, doc_id: str) -> Optional[Dict]:
+        """Get a specific document by ID."""
+        if db_connection:
+            try:
+                cursor = db_connection.cursor()
+                cursor.execute(
+                    "SELECT id, doc_type, name, content, metadata, created_at FROM documents WHERE id = %s AND workspace_id = %s",
+                    (doc_id, workspace_id)
+                )
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        "id": row[0],
+                        "type": row[1],
+                        "name": row[2],
+                        "content": row[3],
+                        "metadata": row[4] if row[4] else {},
+                        "created_at": row[5].isoformat() if row[5] else None,
+                    }
+            except Exception as e:
+                logger.error(f"Error getting document: {e}")
+        else:
+            docs = _documents_store.get(workspace_id, [])
+            for d in docs:
+                if d["id"] == doc_id:
+                    return d
+        return None
+
+    @staticmethod
+    def delete(workspace_id: str, doc_id: str) -> bool:
+        """Delete a document."""
+        if db_connection:
+            try:
+                cursor = db_connection.cursor()
+                cursor.execute("DELETE FROM documents WHERE id = %s AND workspace_id = %s", (doc_id, workspace_id))
+                db_connection.commit()
+                return cursor.rowcount > 0
+            except Exception as e:
+                logger.error(f"Error deleting document: {e}")
+                return False
+        else:
+            if workspace_id in _documents_store:
+                _documents_store[workspace_id] = [d for d in _documents_store[workspace_id] if d["id"] != doc_id]
+            return True
 
 
 # =============================================================================
@@ -1575,6 +1725,47 @@ BUSINESS_TOOLS = [
                 }
             },
             "required": []
+        }
+    },
+    # --- Document Storage ---
+    {
+        "name": "upload_document",
+        "description": "Upload and store a document (contract, policy, requirements, specification).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "doc_type": {
+                    "type": "string",
+                    "enum": ["contract", "policy", "requirements", "specification", "document"],
+                    "description": "Type of document"
+                },
+                "name": {"type": "string", "description": "Document name"},
+                "content": {"type": "string", "description": "Document content (text or markdown)"},
+                "metadata": {"type": "object", "description": "Additional metadata"}
+            },
+            "required": ["name", "content"]
+        }
+    },
+    {
+        "name": "get_document",
+        "description": "Retrieve a stored document by ID.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "doc_id": {"type": "string", "description": "Document ID"}
+            },
+            "required": ["doc_id"]
+        }
+    },
+    {
+        "name": "delete_document",
+        "description": "Delete a stored document.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "doc_id": {"type": "string", "description": "Document ID"}
+            },
+            "required": ["doc_id"]
         }
     },
 ]
@@ -2527,6 +2718,33 @@ async def execute_tool(name: str, arguments: Dict, workspace_id: str = "global")
 
         elif name == "batch_analyze":
             return await handle_batch_analyze(arguments)
+
+        # ============== DOCUMENT STORAGE ==============
+        elif name == "upload_document":
+            doc_type = arguments.get("doc_type", "document")
+            name_arg = arguments.get("name", "Untitled")
+            content = arguments.get("content", "")
+            metadata = arguments.get("metadata", {})
+            return DocumentStore.add(workspace_id, doc_type, name_arg, content, metadata)
+
+        elif name == "list_policies":
+            doc_type = arguments.get("doc_type")  # Optional filter
+            docs = DocumentStore.list(workspace_id, doc_type)
+            return {"policies": docs, "count": len(docs)}
+
+        elif name == "get_document":
+            doc_id = arguments.get("doc_id")
+            if not doc_id:
+                return {"error": "doc_id required"}
+            doc = DocumentStore.get(workspace_id, doc_id)
+            return doc if doc else {"error": "Document not found"}
+
+        elif name == "delete_document":
+            doc_id = arguments.get("doc_id")
+            if not doc_id:
+                return {"error": "doc_id required"}
+            success = DocumentStore.delete(workspace_id, doc_id)
+            return {"success": success}
 
         # Pass through to audit server
         else:
