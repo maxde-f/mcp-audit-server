@@ -1489,7 +1489,7 @@ async def mcp_sse_endpoint(request):
 
     async def event_generator():
         # Send initial endpoint event
-        endpoint_url = f"{SERVER_URL}/mcp/message?session_id={session_id}"
+        endpoint_url = f"{SERVER_URL}/message?session_id={session_id}"
         yield f"event: endpoint\ndata: {endpoint_url}\n\n"
 
         # Keep connection alive
